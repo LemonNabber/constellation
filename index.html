@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Constellation — moodboards from Are.na</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✦</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- LEFT DRAWER -->
+  <aside class="drawer">
+    <header class="drawer__head">
+      <h1>Constellation</h1>
+      <p class="tagline">pull from are.na · pin what matters · watch it connect</p>
+    </header>
+
+    <form id="search-form" class="search-form" autocomplete="off">
+      <label for="search-input" class="field-label">Search are.na channels</label>
+      <input id="search-input" type="text" placeholder="e.g. brutalist type, tide pools, zines…" required>
+      <button type="submit">Search</button>
+    </form>
+
+    <div id="search-status" class="status" aria-live="polite"></div>
+
+    <div id="channel-results" class="channel-list"></div>
+
+    <div class="drawer__divider"></div>
+
+    <div class="board-nav">
+      <button class="board-nav__item is-active" data-view="results" id="nav-results">
+        Channel view
+      </button>
+      <button class="board-nav__item" data-view="board" id="nav-board">
+        Your board <span id="board-count" class="count">0</span>
+      </button>
+      <button class="board-nav__item" data-view="graph" id="nav-graph">
+        Graph
+      </button>
+    </div>
+
+    <div class="drawer__foot">
+      <button id="export-btn" class="ghost-btn">Export board (.json)</button>
+      <button id="clear-btn" class="ghost-btn ghost-btn--danger">Clear board</button>
+    </div>
+  </aside>
+
+  <!-- MAIN PANEL -->
+  <main class="main">
+
+    <section id="view-results" class="view is-active">
+      <div class="view__head">
+        <h2 id="channel-title">Search are.na to begin</h2>
+        <p id="channel-sub" class="muted"></p>
+      </div>
+      <div id="block-grid" class="masonry"></div>
+    </section>
+
+    <section id="view-board" class="view">
+      <div class="view__head">
+        <h2>Your board</h2>
+        <p class="muted">Pinned blocks, annotated in your own words.</p>
+      </div>
+      <div id="board-grid" class="masonry"></div>
+      <p id="board-empty" class="empty-state">Nothing pinned yet. Search a channel on the left, then pin a block with the <strong>+ pin</strong> button.</p>
+    </section>
+
+    <section id="view-graph" class="view">
+      <div class="view__head">
+        <h2>Graph</h2>
+        <p class="muted">Cards link when they share a tag or a source channel. Click a node to inspect and annotate.</p>
+      </div>
+      <div class="graph-wrap">
+        <svg id="graph-svg"></svg>
+        <p id="graph-empty" class="empty-state">Pin at least two cards and give them matching tags to see connections form.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- DETAIL / ANNOTATION PANEL -->
+  <aside id="detail-panel" class="detail-panel">
+    <button id="detail-close" class="detail-close" aria-label="Close">×</button>
+    <div id="detail-content"></div>
+  </aside>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
