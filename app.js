@@ -11,7 +11,7 @@ const STORAGE_KEY = "constellation-board-v1";
 // Register a free OAuth application at https://www.are.na/oauth/applications
 // and paste its Client ID below. This is a *public* client ID (used with PKCE,
 // no client secret), so it is safe to commit — see the README for setup steps.
-const ARENA_CLIENT_ID = "YOUR_ARENA_CLIENT_ID_HERE";
+const ARENA_CLIENT_ID = "qJCcHivRW1W7VohpUzXGN-R52gNdUut3Q5a2zMCA_NE";
 
 let board = loadBoard();          // array of pinned card objects
 let currentBlocks = [];           // normalized cards from the last-opened channel
