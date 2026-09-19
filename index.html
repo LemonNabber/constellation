@@ -33,6 +33,23 @@
 
     <div class="drawer__divider"></div>
 
+    <div class="arena-connect">
+      <p class="field-label">Are.na account</p>
+      <button id="connect-btn" class="ghost-btn">Connect Are.na account</button>
+      <div id="connected-box" class="connected-box" style="display:none;">
+        <p class="connected-as">Connected as <strong id="connected-name"></strong></p>
+        <button id="disconnect-btn" class="ghost-btn ghost-btn--danger">Disconnect</button>
+      </div>
+      <div id="connect-status" class="status" aria-live="polite"></div>
+    </div>
+
+    <div id="my-channels-section" style="display:none;">
+      <p class="field-label" style="margin-top:16px;">Your channels</p>
+      <div id="my-channels-list" class="channel-list"></div>
+    </div>
+
+    <div class="drawer__divider"></div>
+
     <div class="board-nav">
       <button class="board-nav__item is-active" data-view="results" id="nav-results">
         Channel view

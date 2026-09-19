@@ -4,8 +4,14 @@
    No API key required for the public read/search endpoints.
    ========================================================== */
 
-const API_BASE = "https://api.are.na/v2";
+const API_BASE = "https://api.are.na/v2";       // public read/search — no key needed
+const API_V3_BASE = "https://api.are.na/v3";    // used only once the user connects their account
 const STORAGE_KEY = "constellation-board-v1";
+
+// Register a free OAuth application at https://www.are.na/oauth/applications
+// and paste its Client ID below. This is a *public* client ID (used with PKCE,
+// no client secret), so it is safe to commit — see the README for setup steps.
+const ARENA_CLIENT_ID = "YOUR_ARENA_CLIENT_ID_HERE";
 
 let board = loadBoard();          // array of pinned card objects
 let currentBlocks = [];           // normalized cards from the last-opened channel
@@ -55,6 +61,214 @@ async function loadChannel(slug) {
     .map(block => normalizeBlock(block, data.slug, data.title, channelUrl));
 
   return { title: data.title, length: data.length, cards };
+}
+
+/* ==========================================================
+   Connect Are.na account (OAuth2 + PKCE)
+   Docs: https://www.are.na/developers/explore/authentication
+   PKCE means no client secret is ever needed or stored — safe
+   to run entirely from static, client-side JS.
+   ========================================================== */
+
+function base64UrlEncode(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function randomString(length) {
+  const bytes = new Uint8Array(length / 2);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256(text) {
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+}
+
+function currentRedirectUri() {
+  return window.location.origin + window.location.pathname;
+}
+
+async function connectArena() {
+  if (!ARENA_CLIENT_ID || ARENA_CLIENT_ID === "YOUR_ARENA_CLIENT_ID_HERE") {
+    document.getElementById("connect-status").textContent =
+      "Add your Are.na OAuth Client ID in app.js first (see README).";
+    return;
+  }
+  const verifier = randomString(64);
+  sessionStorage.setItem("arena_pkce_verifier", verifier);
+  const challenge = base64UrlEncode(await sha256(verifier));
+  const redirectUri = currentRedirectUri();
+
+  const authUrl = `https://www.are.na/oauth/authorize?`
+    + `client_id=${encodeURIComponent(ARENA_CLIENT_ID)}`
+    + `&redirect_uri=${encodeURIComponent(redirectUri)}`
+    + `&response_type=code&scope=read`
+    + `&code_challenge=${challenge}&code_challenge_method=S256`;
+
+  window.location.href = authUrl;
+}
+
+async function handleOAuthRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (!code) return;
+
+  const verifier = sessionStorage.getItem("arena_pkce_verifier");
+  const redirectUri = currentRedirectUri();
+  // clean the ?code=... out of the URL either way, so a refresh doesn't re-trigger this
+  window.history.replaceState({}, document.title, redirectUri);
+  if (!verifier) return;
+
+  try {
+    const res = await fetch(`${API_V3_BASE}/oauth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: ARENA_CLIENT_ID,
+        code,
+        redirect_uri: redirectUri,
+        code_verifier: verifier
+      })
+    });
+    if (!res.ok) throw new Error("token exchange failed");
+    const data = await res.json();
+    sessionStorage.setItem("arena_access_token", data.access_token);
+    sessionStorage.removeItem("arena_pkce_verifier");
+    await loadArenaProfile();
+  } catch (err) {
+    document.getElementById("connect-status").textContent = "Connection failed — try again.";
+  }
+}
+
+function getArenaToken() {
+  return sessionStorage.getItem("arena_access_token");
+}
+
+async function loadArenaProfile() {
+  const token = getArenaToken();
+  if (!token) return;
+  const res = await fetch(`${API_V3_BASE}/me`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) {
+    disconnectArena();
+    return;
+  }
+  const me = await res.json();
+  sessionStorage.setItem("arena_me", JSON.stringify({ slug: me.slug, name: me.name }));
+  showConnectedUI(me.name);
+  await loadMyChannels();
+}
+
+function showConnectedUI(name) {
+  document.getElementById("connect-btn").style.display = "none";
+  document.getElementById("connected-box").style.display = "block";
+  document.getElementById("connected-name").textContent = name;
+}
+
+function disconnectArena() {
+  sessionStorage.removeItem("arena_access_token");
+  sessionStorage.removeItem("arena_me");
+  document.getElementById("connect-btn").style.display = "block";
+  document.getElementById("connected-box").style.display = "none";
+  document.getElementById("my-channels-section").style.display = "none";
+  document.getElementById("my-channels-list").innerHTML = "";
+}
+
+document.getElementById("connect-btn").addEventListener("click", connectArena);
+document.getElementById("disconnect-btn").addEventListener("click", disconnectArena);
+
+/* ---- listing + loading the connected user's own channels (v3 API) ---- */
+
+async function loadMyChannels() {
+  const token = getArenaToken();
+  const me = JSON.parse(sessionStorage.getItem("arena_me") || "null");
+  if (!token || !me) return;
+
+  const section = document.getElementById("my-channels-section");
+  const list = document.getElementById("my-channels-list");
+  section.style.display = "block";
+  list.innerHTML = `<p class="status">Loading your channels…</p>`;
+
+  try {
+    const url = `${API_V3_BASE}/users/${encodeURIComponent(me.slug)}/contents?type=Channel&per=100`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error("failed to load channels");
+    const data = await res.json();
+    renderMyChannels(data.data || []);
+  } catch (err) {
+    list.innerHTML = `<p class="status is-error">Couldn't load your channels.</p>`;
+  }
+}
+
+function renderMyChannels(channels) {
+  const list = document.getElementById("my-channels-list");
+  list.innerHTML = "";
+  if (!channels.length) {
+    list.innerHTML = `<p class="status">No channels found on your account yet.</p>`;
+    return;
+  }
+  channels.forEach(ch => {
+    const btn = document.createElement("button");
+    btn.className = "channel-item";
+    const badge = ch.visibility !== "public" ? `<span class="visibility-badge">${ch.visibility}</span>` : "";
+    btn.innerHTML = `
+      <span class="channel-item__title">${escapeHtml(ch.title)}</span>
+      <span class="channel-item__meta">${ch.counts?.contents ?? 0} items${badge}</span>
+    `;
+    btn.addEventListener("click", () => openMyChannel(ch));
+    list.appendChild(btn);
+  });
+}
+
+async function openMyChannel(channel) {
+  const token = getArenaToken();
+  const status = document.getElementById("search-status");
+  status.textContent = "Loading your channel…";
+  status.classList.remove("is-error");
+  try {
+    const url = `${API_V3_BASE}/channels/${channel.id}/contents?per=100`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error("failed to load channel contents");
+    const data = await res.json();
+    const channelUrl = `https://www.are.na/${channel.owner?.slug || ""}/${channel.slug}`;
+
+    const cards = (data.data || [])
+      .filter(item => item.base_type === "Block")
+      .map(block => normalizeV3Block(block, channel.slug, channel.title, channelUrl));
+
+    currentBlocks = cards;
+    document.getElementById("channel-title").textContent = channel.title;
+    document.getElementById("channel-sub").textContent = `${cards.length} blocks · your ${channel.visibility} channel`;
+    renderBlockGrid(cards, document.getElementById("block-grid"), { pinnable: true });
+    setView("results");
+    status.textContent = "";
+  } catch (err) {
+    status.textContent = "Couldn't load that channel.";
+    status.classList.add("is-error");
+  }
+}
+
+function normalizeV3Block(block, sourceChannel, sourceChannelTitle, channelUrl) {
+  const image = block.image?.medium?.src || block.image?.large?.src || block.image?.small?.src || null;
+  const text = block.type === "Text" ? (block.content?.plain || "")
+             : block.type === "Link" ? (block.content?.plain || "")
+             : "";
+  const title = block.title || (text ? text.slice(0, 60) : "Untitled block");
+
+  return {
+    id: `v3-${block.id}`,
+    type: block.type,
+    title,
+    image,
+    text: text.slice(0, 400),
+    linkUrl: block.source?.url || null,
+    sourceChannel,
+    sourceChannelTitle,
+    sourceUrl: channelUrl,
+    tags: [],
+    notes: ""
+  };
 }
 
 /* ---------------- normalize an Are.na block into a card ---------------- */
@@ -445,3 +659,16 @@ document.getElementById("clear-btn").addEventListener("click", () => {
 
 renderBoard();
 refreshBoardCount();
+
+(async function initArenaConnection() {
+  await handleOAuthRedirect();          // in case we just came back from are.na/oauth/authorize
+  if (getArenaToken()) {
+    const me = JSON.parse(sessionStorage.getItem("arena_me") || "null");
+    if (me) {
+      showConnectedUI(me.name);
+      await loadMyChannels();
+    } else {
+      await loadArenaProfile();
+    }
+  }
+})();
