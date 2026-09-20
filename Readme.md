@@ -2,7 +2,7 @@
 
 A small web app that pulls moodboard material from [Are.na](https://www.are.na) — the collaborative image/link/note-collecting platform — and lets you curate it into your own board, annotate each piece with tags and notes, and see how your saved pieces connect to each other as a force-directed graph (Obsidian-style), instead of Are.na's own flat channel view.
 
-**[Live demo →](#)** *(add your GitHub Pages link here once deployed)*
+**[Live demo →] (https://lemonnabber.github.io/constellation/)**
 
 ## How it works
 
