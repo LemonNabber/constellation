@@ -58,7 +58,7 @@
         Your board <span id="board-count" class="count">0</span>
       </button>
       <button class="board-nav__item" data-view="graph" id="nav-graph">
-        Graph
+        Graphs
       </button>
     </div>
 
@@ -90,12 +90,44 @@
 
     <section id="view-graph" class="view">
       <div class="view__head">
-        <h2>Graph</h2>
-        <p class="muted">Cards link when they share a tag or a source channel. Click a node to inspect and annotate.</p>
+        <h2>Graphs</h2>
+        <p class="muted">Keep as many graphs as you like. Each one draws from pins you choose on your board or, once your Are.na account is connected, from whole channels. Click a node to inspect and annotate it.</p>
       </div>
-      <div class="graph-wrap">
-        <svg id="graph-svg"></svg>
-        <p id="graph-empty" class="empty-state">Pin at least two cards and give them matching tags to see connections form.</p>
+
+      <div id="graph-tabs" class="graph-tabs" role="tablist" aria-label="Your graphs"></div>
+
+      <div class="graph-layout">
+        <aside class="graph-config" aria-label="Graph settings">
+          <div>
+            <label class="field-label" for="graph-name">Graph name</label>
+            <div class="graph-config__name">
+              <input id="graph-name" type="text" maxlength="40">
+              <button id="graph-delete" class="ghost-btn ghost-btn--danger" type="button">Delete</button>
+            </div>
+          </div>
+
+          <div>
+            <p class="field-label">Draw this graph from</p>
+            <div class="mode-switch" role="group" aria-label="Graph source">
+              <button id="mode-pins" type="button">Board pins</button>
+              <button id="mode-channels" type="button">Whole channels</button>
+            </div>
+            <p id="mode-hint" class="status"></p>
+          </div>
+
+          <div id="graph-source-list" class="source-list"></div>
+          <div id="graph-source-actions" class="graph-actions"></div>
+          <div id="graph-source-status" class="status" aria-live="polite"></div>
+        </aside>
+
+        <div class="graph-wrap">
+          <svg id="graph-svg"></svg>
+          <p id="graph-empty" class="empty-state"></p>
+          <div id="graph-progress" class="graph-progress" hidden>
+            <span id="graph-progress-text"></span>
+            <button id="graph-progress-stop" class="ghost-btn" type="button">Stop</button>
+          </div>
+        </div>
       </div>
     </section>
 
